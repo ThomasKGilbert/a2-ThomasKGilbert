@@ -1,8 +1,8 @@
 {
-  "name": "",
-  "version": "",
-  "description": "",
-  "author": "",
+  "name": "a2-ThomasKGilbert",
+  "version": "1.0.0",
+  "description": "A todo app with add, delete, and toggle functionality",
+  "author": "Thomas Gilbert",
   "scripts": {
     "start": "node server.js"
   },
