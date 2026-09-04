@@ -7,11 +7,7 @@ const http = require( 'http' ),
       dir  = 'public/',
       port = 3000
 
-const appdata = [
-  { 'model': 'toyota', 'year': 1999, 'mpg': 23 },
-  { 'model': 'honda', 'year': 2004, 'mpg': 30 },
-  { 'model': 'ford', 'year': 1987, 'mpg': 14} 
-]
+const appdata = []
 
 const server = http.createServer( function( request,response ) {
   if( request.method === 'GET' ) {
@@ -26,7 +22,10 @@ const handleGet = function( request, response ) {
 
   if( request.url === '/' ) {
     sendFile( response, 'public/index.html' )
-  }else{
+  } else if( request.url === '/task-list' ) {
+    response.writeHead( 200, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify(appdata))
+  } else{
     sendFile( response, filename )
   }
 }
@@ -40,13 +39,52 @@ const handlePost = function( request, response ) {
 
   request.on( 'end', function() {
     console.log( JSON.parse( dataString ) )
-    // ... do something with the data here!!!
 
-    response.writeHead( 200, "OK", {'Content-Type': 'text/plain' })
+    const incomingTask = JSON.parse(dataString)
 
-    // change this to incorporate data
-    response.end('test')
+    if(request.url === '/add-task' ) {
+      const enhancedTask = addDerivedField( incomingTask )
+      enhancedTask.id = appdata.length ? Math.max(...appdata.map(task => task.id)) + 1 : 1 // I hate Math.max() :(
+      appdata.push( enhancedTask )
+
+      response.writeHead( 200, "OK", {'Content-Type': 'application/json' })
+      response.end(JSON.stringify(appdata))
+    } else if (request.url === '/delete-task' ) {
+      const index = appdata.findIndex( task => task.id === incomingTask.id )
+      if( index !== -1 ) {
+        console.log( "Deleting Task ", appdata[index] )
+        appdata.splice(index, 1)
+      }
+
+      response.writeHead( 200, "OK", {'Content-Type': 'application/json' })
+      response.end(JSON.stringify(appdata))
+    }else if(request.url === '/toggle-task' ) {
+      const task = appdata.find( task => task.id === incomingTask.id )
+      if ( task ) {
+        task.done = !task.done
+        console.log( "Toggled Task ", task )
+      }
+
+      response.writeHead( 200, "OK", {'Content-Type': 'application/json' })
+      response.end(JSON.stringify(appdata))
+    } else{
+      response.writeHead(404)
+      response.end("404 Not Found")
+    }
   })
+}
+
+const addDerivedField = function( newTask ) {
+  const daysTillDeadline = newTask.priority === 'high' ? 1 : newTask.priority === 'medium' ? 3 : 6
+
+  const dateCreated = new Date( newTask.creationDate )
+  const deadlineDate = new Date( dateCreated )
+  deadlineDate.setDate( dateCreated.getDate() + daysTillDeadline )
+
+  return {
+    ...newTask,
+    deadline: deadlineDate.toISOString().split('T')[0]
+  }
 }
 
 const sendFile = function( response, filename ) {
